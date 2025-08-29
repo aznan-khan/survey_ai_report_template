@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   BarChart3, 
   Users, 
@@ -27,11 +27,286 @@ import {
   BarChart2,
   Filter,
   Eye,
-  Brain
+  Brain,
+  Upload,
+  FileText,
+  X,
+  RefreshCw,
+  Smile,
+  Frown,
+  Meh,
+  TrendingUp as TrendingUpIcon,
+  BarChart,
+  LineChart,
+  ScatterChart
 } from 'lucide-react';
 
+// TypeScript Interfaces for complete type safety
+interface SurveyMetadata {
+  survey_title: string;
+  generation_date: string;
+  report_period: string;
+  total_responses: number;
+}
+
+interface KeyMetric {
+  title: string;
+  value: string;
+  icon: string;
+  subtitle: string;
+  color: string;
+}
+
+interface NPSBreakdown {
+  promoters: { count: string; percentage: string };
+  passives: { count: string; percentage: string };
+  detractors: { count: string; percentage: string };
+  overall_score: string;
+}
+
+interface CSATESATBreakdown {
+  very_satisfied: { count: string; percentage: string };
+  satisfied: { count: string; percentage: string };
+  neutral: { count: string; percentage: string };
+  dissatisfied: { count: string; percentage: string };
+  very_dissatisfied: { count: string; percentage: string };
+  overall_satisfied: { count: string; percentage: string };
+  overall_score: string;
+  metric_type: string;
+}
+
+interface CESEESBreakdown {
+  easy: { count: string; percentage: string };
+  neutral: { count: string; percentage: string };
+  difficult: { count: string; percentage: string };
+  overall_score: string;
+  metric_type: string;
+}
+
+interface CustomMetricBreakdown {
+  metric_name: string;
+  metric_description: string;
+  scale_type: string;
+  breakdown: Array<{
+    label: string;
+    count: string;
+    percentage: string;
+    value: string;
+  }>;
+  overall_score: string;
+  total_responses: number;
+  benchmark: { value: string; label: string };
+  is_auto_selected: boolean;
+}
+
+interface Driver {
+  name: string;
+  correlation: string;
+  description: string;
+  importance: number;
+  question_id: string;
+  target_metric: string;
+}
+
+interface DemographicSegment {
+  respondent_count: number;
+  avg_satisfaction: string;
+  nps: string;
+  ces_score: string;
+  custom_recognition_score: string;
+  key_differentiator: string;
+  segment: string;
+}
+
+interface NotableDifferences {
+  top_positive_segments: Array<{
+    segment: string;
+    category: string;
+    insight: string;
+    action: string;
+  }>;
+  at_risk_segments: Array<{
+    segment: string;
+    category: string;
+    insight: string;
+    action: string;
+  }>;
+  opportunity_segments: Array<{
+    segment: string;
+    category: string;
+    insight: string;
+    action: string;
+  }>;
+  key_takeaways?: string[];
+}
+
+interface Demographics {
+  segments_by_demographic: Record<string, {
+    question_text: string;
+    segments: DemographicSegment[];
+  }>;
+  notable_differences: NotableDifferences;
+}
+
+interface SegmentInsight {
+  category: string;
+  segment: string;
+  insights: string;
+  action: string;
+  icon: string;
+}
+
+interface QuestionLevelSegment {
+  segment: string;
+  NPS: string;
+  CES: string;
+  CSAT: string;
+  "Segment size": string;
+  key_differentiator: string;
+  icon: string;
+  "Recognition Score": string;
+}
+
+interface SegmentPerformance {
+  question_level: Record<string, Record<string, QuestionLevelSegment>>;
+  segment_insights: SegmentInsight[];
+  key_takeaways?: string[];
+}
+
+interface PriorityIssue {
+  title: string;
+  description: string;
+  severity: string;
+  percentage: string;
+}
+
+interface Recommendation {
+  title: string;
+  description: string;
+  priority: string;
+  timeframe: string;
+}
+
+interface ActionPlanItem {
+  title: string;
+  description: string;
+  timeframe: string;
+  priority: string;
+  expected_impact: string;
+}
+
+interface ActionPlan {
+  quick_wins: ActionPlanItem[];
+  long_term_actions: ActionPlanItem[];
+}
+
+interface CustomerQuote {
+  text: string;
+  author: string;
+  sentiment: string;
+}
+
+interface KeyInsight {
+  title: string;
+  description: string;
+  color: string;
+  category: string;
+}
+
+interface SentimentAnalysis {
+  overall_sentiment?: 'positive' | 'negative' | 'neutral';
+  sentiment_distribution?: {
+    positive: number;
+    negative: number;
+    neutral: number;
+  };
+  sentiment_trends?: Array<{
+    period: string;
+    positive: number;
+    negative: number;
+    neutral: number;
+  }>;
+  key_sentiment_drivers?: Array<{
+    factor: string;
+    impact: number;
+    sentiment: 'positive' | 'negative' | 'neutral';
+  }>;
+}
+
+interface Themes {
+  total_mentions: number;
+  themes: any[];
+}
+
+interface Emotions {
+  dominant_emotion: string;
+  emotional_intensity: string;
+  emotions: any[];
+}
+
+interface AIInsight {
+  insight: string;
+  implication: string;
+  impact: string;
+  action: string;
+}
+
+interface Sections {
+  ai_insights: AIInsight[];
+}
+
+interface SurveyData {
+  survey_metadata: SurveyMetadata;
+  key_metrics: KeyMetric[];
+  sentiment_analysis: SentimentAnalysis;
+  themes: Themes;
+  emotions: Emotions;
+  customer_quotes: CustomerQuote[];
+  drivers: Driver[];
+  nps_breakdown: NPSBreakdown;
+  csat_esat_breakdown: CSATESATBreakdown;
+  ces_ees_breakdown: CESEESBreakdown;
+  custom_metric_breakdown: CustomMetricBreakdown[];
+  demographics: Demographics;
+  segment_performance: SegmentPerformance[];
+  priority_issues: PriorityIssue[];
+  recommendations: Recommendation[];
+  action_plan: ActionPlan;
+  key_insights: KeyInsight[];
+  sections: Sections;
+}
+
+
+
+interface AdvancedAnalytics {
+  correlation_analysis: Array<{
+    metric1: string;
+    metric2: string;
+    correlation: number;
+    significance: string;
+  }>;
+  predictive_insights: Array<{
+    insight: string;
+    confidence: number;
+    timeframe: string;
+  }>;
+  segment_clustering: Array<{
+    cluster_name: string;
+    size: number;
+    characteristics: string[];
+    performance_score: number;
+  }>;
+}
+
+interface FileUploadState {
+  file: File | null;
+  isUploading: boolean;
+  error: string | null;
+  success: boolean;
+}
+
 // Mock data based on the JSON structure
-const surveyData = {
+const defaultSurveyData: SurveyData = {
   "survey_metadata": {
     "survey_title": "Copy (2) of Milton Employee Engagement Comprehensive Survey FROM sogo_demo07",
     "generation_date": "2025-08-28T13:35:12.499027",
@@ -110,6 +385,16 @@ const surveyData = {
       "color": "#2ecc71"
     }
   ],
+  "sentiment_analysis": {},
+  "themes": {
+    "total_mentions": 0,
+    "themes": []
+  },
+  "emotions": {
+    "dominant_emotion": "",
+    "emotional_intensity": "",
+    "emotions": []
+  },
   "nps_breakdown": {
     "promoters": {
       "count": "19981",
@@ -722,26 +1007,406 @@ const surveyData = {
       "color": "#3498db",
       "category": "Medium"
     }
+  ],
+  "sections": {
+    "ai_insights": []
+  }
+};
+
+// Mock sentiment analysis data
+const mockSentimentAnalysis: SentimentAnalysis = {
+  overall_sentiment: 'neutral',
+  sentiment_distribution: {
+    positive: 35,
+    negative: 25,
+    neutral: 40
+  },
+  sentiment_trends: [
+    { period: 'Q1 2024', positive: 30, negative: 30, neutral: 40 },
+    { period: 'Q2 2024', positive: 32, negative: 28, neutral: 40 },
+    { period: 'Q3 2024', positive: 35, negative: 25, neutral: 40 },
+    { period: 'Q4 2024', positive: 35, negative: 25, neutral: 40 }
+  ],
+  key_sentiment_drivers: [
+    { factor: 'Work Environment', impact: 0.85, sentiment: 'positive' },
+    { factor: 'Training Opportunities', impact: 0.72, sentiment: 'positive' },
+    { factor: 'Compensation', impact: -0.65, sentiment: 'negative' },
+    { factor: 'Management Support', impact: 0.45, sentiment: 'neutral' }
   ]
 };
 
-const MetricCard = ({ metric }: { metric: any }) => (
-  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="text-2xl">{metric.icon}</div>
-          <h3 className="font-semibold text-gray-800 text-sm">{metric.title}</h3>
+// Mock advanced analytics data
+const mockAdvancedAnalytics: AdvancedAnalytics = {
+  correlation_analysis: [
+    { metric1: 'NPS', metric2: 'Training Opportunities', correlation: 0.76, significance: 'High' },
+    { metric1: 'CSAT', metric2: 'Work Environment', correlation: 0.68, significance: 'High' },
+    { metric1: 'CES', metric2: 'Management Support', correlation: 0.52, significance: 'Medium' }
+  ],
+  predictive_insights: [
+    { insight: 'Training improvements could increase NPS by 8-12 points', confidence: 0.85, timeframe: '3-6 months' },
+    { insight: 'Work environment enhancements may boost CSAT by 15%', confidence: 0.78, timeframe: '6-12 months' },
+    { insight: 'Compensation review could reduce turnover by 20%', confidence: 0.72, timeframe: '12-18 months' }
+  ],
+  segment_clustering: [
+    { cluster_name: 'High Performers', size: 25, characteristics: ['High satisfaction', 'Strong engagement'], performance_score: 8.5 },
+    { cluster_name: 'At Risk', size: 15, characteristics: ['Low satisfaction', 'High turnover risk'], performance_score: 3.2 },
+    { cluster_name: 'Opportunity', size: 60, characteristics: ['Moderate satisfaction', 'Improvement potential'], performance_score: 6.1 }
+  ]
+};
+
+// File Upload Component
+const FileUploadComponent: React.FC<{
+  onFileUpload: (data: SurveyData) => void;
+  onReset: () => void;
+}> = ({ onFileUpload, onReset }) => {
+  const [uploadState, setUploadState] = useState<FileUploadState>({
+    file: null,
+    isUploading: false,
+    error: null,
+    success: false
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  const validateFile = (file: File): string | null => {
+    if (!file.name.endsWith('.json')) {
+      return 'Please upload a JSON file';
+    }
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      return 'File size must be less than 10MB';
+    }
+    return null;
+  };
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    const validationError = validateFile(file);
+    if (validationError) {
+      setUploadState(prev => ({ ...prev, error: validationError }));
+      return;
+    }
+
+    setUploadState(prev => ({ ...prev, isUploading: true, error: null }));
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as SurveyData;
+      
+      // Basic validation of the JSON structure
+      if (!data.survey_metadata || !data.key_metrics) {
+        throw new Error('Invalid survey data format');
+      }
+
+      setUploadState(prev => ({ 
+        ...prev, 
+        file, 
+        isUploading: false, 
+        success: true,
+        error: null 
+      }));
+      
+      onFileUpload(data);
+    } catch (error) {
+      setUploadState(prev => ({ 
+        ...prev, 
+        isUploading: false, 
+        error: error instanceof Error ? error.message : 'Failed to parse JSON file' 
+      }));
+    }
+  }, [onFileUpload]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  }, [handleFileUpload]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  }, [handleFileUpload]);
+
+  const handleReset = useCallback(() => {
+    setUploadState({
+      file: null,
+      isUploading: false,
+      error: null,
+      success: false
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    onReset();
+  }, [onReset]);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Upload Survey Data</h2>
+        <p className="text-gray-600">Upload your JSON survey data file to generate insights</p>
+      </div>
+
+      {!uploadState.success ? (
+        <div
+          ref={dropZoneRef}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            uploadState.error 
+              ? 'border-red-300 bg-red-50' 
+              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+          }`}
+        >
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700 mb-2">
+            {uploadState.isUploading ? 'Processing...' : 'Drag & drop your JSON file here'}
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            or click to browse files (max 10MB)
+          </p>
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileSelect}
+            className="hidden"
+            disabled={uploadState.isUploading}
+          />
+          
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadState.isUploading}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploadState.isUploading ? 'Processing...' : 'Choose File'}
+          </button>
+
+          {uploadState.error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+              <p className="text-red-700 text-sm">{uploadState.error}</p>
+            </div>
+          )}
         </div>
-        <div className="text-3xl font-bold mb-1" style={{ color: metric.color }}>
-          {metric.value}
+      ) : (
+        <div className="text-center">
+          <div className="bg-green-100 border border-green-300 rounded-lg p-6 mb-4">
+            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
+            <h3 className="text-lg font-semibold text-green-800 mb-1">File Uploaded Successfully!</h3>
+            <p className="text-green-700">{uploadState.file?.name}</p>
+          </div>
+          
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Upload New File
+            </button>
+            <button
+              onClick={handleReset}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reset
+            </button>
+          </div>
         </div>
-        <p className="text-sm text-gray-600">{metric.subtitle}</p>
+      )}
+    </div>
+  );
+};
+
+// Sentiment Analysis Component
+const SentimentAnalysisComponent: React.FC<{ data: SentimentAnalysis }> = ({ data }) => {
+  // Check if sentiment analysis data exists
+  if (!data.overall_sentiment && !data.sentiment_distribution && !data.key_sentiment_drivers) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="text-center">
+          <Smile className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">No Sentiment Data Available</h3>
+          <p className="text-gray-500">Sentiment analysis data has not been provided in the uploaded JSON file.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {data.overall_sentiment && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Smile className="w-5 h-5 text-green-500" />
+            Overall Sentiment
+          </h3>
+          <div className="flex items-center gap-4">
+            <div className={`text-2xl ${
+              data.overall_sentiment === 'positive' ? 'text-green-500' :
+              data.overall_sentiment === 'negative' ? 'text-red-500' : 'text-yellow-500'
+            }`}>
+              {data.overall_sentiment === 'positive' ? <Smile /> :
+               data.overall_sentiment === 'negative' ? <Frown /> : <Meh />}
+            </div>
+            <div>
+              <p className="text-lg font-semibold capitalize">{data.overall_sentiment}</p>
+              <p className="text-sm text-gray-600">Overall sentiment score</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data.sentiment_distribution && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Sentiment Distribution</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{data.sentiment_distribution.positive}%</div>
+              <p className="text-sm text-green-700">Positive</p>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">{data.sentiment_distribution.neutral}%</div>
+              <p className="text-sm text-yellow-700">Neutral</p>
+            </div>
+            <div className="text-center p-4 bg-red-50 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">{data.sentiment_distribution.negative}%</div>
+              <p className="text-sm text-red-700">Negative</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data.key_sentiment_drivers && data.key_sentiment_drivers.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Key Sentiment Drivers</h3>
+          <div className="space-y-3">
+            {data.key_sentiment_drivers.map((driver, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-800">{driver.factor}</p>
+                  <p className="text-sm text-gray-600">Impact: {Math.abs(driver.impact).toFixed(2)}</p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  driver.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                  driver.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {driver.sentiment}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Advanced Analytics Component
+const AdvancedAnalyticsComponent: React.FC<{ data: AdvancedAnalytics }> = ({ data }) => (
+  <div className="space-y-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <BarChart className="w-5 h-5 text-blue-500" />
+        Correlation Analysis
+      </h3>
+      <div className="space-y-3">
+        {data.correlation_analysis.map((correlation, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <p className="font-medium text-gray-800">{correlation.metric1} ↔ {correlation.metric2}</p>
+              <p className="text-sm text-gray-600">Correlation: {correlation.correlation.toFixed(2)}</p>
+            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              correlation.significance === 'High' ? 'bg-green-100 text-green-800' :
+              correlation.significance === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-red-100 text-red-800'
+            }`}>
+              {correlation.significance}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <TrendingUpIcon className="w-5 h-5 text-purple-500" />
+        Predictive Insights
+      </h3>
+      <div className="space-y-4">
+        {data.predictive_insights.map((insight, index) => (
+          <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <p className="font-medium text-purple-800 mb-2">{insight.insight}</p>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-purple-600">Confidence: {(insight.confidence * 100).toFixed(0)}%</span>
+              <span className="text-purple-600">Timeframe: {insight.timeframe}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <ScatterChart className="w-5 h-5 text-indigo-500" />
+        Segment Clustering
+      </h3>
+      <div className="space-y-4">
+        {data.segment_clustering.map((cluster, index) => (
+          <div key={index} className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-indigo-800">{cluster.cluster_name}</h4>
+              <span className="text-sm text-indigo-600">{cluster.size}% of population</span>
+            </div>
+            <div className="mb-2">
+              <p className="text-sm text-indigo-700 mb-1">Characteristics:</p>
+              <div className="flex flex-wrap gap-1">
+                {cluster.characteristics.map((char, charIndex) => (
+                  <span key={charIndex} className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded">
+                    {char}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-indigo-600">Performance Score:</span>
+              <span className="font-semibold text-indigo-800">{cluster.performance_score}/10</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   </div>
 );
 
+// Updated MetricCard with smaller text for top drivers
+const MetricCard = ({ metric }: { metric: KeyMetric }) => (
+  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="text-2xl">{metric.icon}</div>
+          <h3 className="font-semibold text-gray-800 text-xs">{metric.title}</h3>
+        </div>
+        <div className={`font-bold mb-1 ${metric.title.includes('Top Driver') ? 'text-lg' : 'text-2xl'}`} style={{ color: metric.color }}>
+          {metric.value}
+        </div>
+        <p className="text-xs text-gray-600">{metric.subtitle}</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Progress Bar Component
 const ProgressBar = ({ percentage, color, label, count }: { percentage: number; color: string; label: string; count?: string }) => (
   <div className="mb-4">
     <div className="flex justify-between items-center mb-2">
@@ -760,7 +1425,8 @@ const ProgressBar = ({ percentage, color, label, count }: { percentage: number; 
   </div>
 );
 
-const PriorityIssueCard = ({ issue }: { issue: any }) => (
+// Priority Issue Card Component
+const PriorityIssueCard = ({ issue }: { issue: PriorityIssue }) => (
   <div className={`bg-white rounded-xl p-6 border-l-4 shadow-lg ${
     issue.severity === 'High' ? 'border-red-500' : 'border-orange-500'
   }`}>
@@ -769,8 +1435,8 @@ const PriorityIssueCard = ({ issue }: { issue: any }) => (
         issue.severity === 'High' ? 'text-red-500' : 'text-orange-500'
       }`} />
       <div className="flex-1">
-        <h3 className="font-semibold text-gray-800 mb-2">{issue.title}</h3>
-        <p className="text-gray-600 text-sm mb-3">{issue.description}</p>
+        <h3 className="font-semibold text-gray-800 mb-2 text-sm">{issue.title}</h3>
+        <p className="text-gray-600 text-xs mb-3">{issue.description}</p>
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
             issue.severity === 'High' 
@@ -779,14 +1445,15 @@ const PriorityIssueCard = ({ issue }: { issue: any }) => (
           }`}>
             {issue.severity} Priority
           </span>
-          <span className="text-sm font-semibold text-gray-700">{issue.percentage}</span>
+          <span className="text-xs font-semibold text-gray-700">{issue.percentage}</span>
         </div>
       </div>
     </div>
   </div>
 );
 
-const RecommendationCard = ({ recommendation }: { recommendation: any }) => (
+// Recommendation Card Component
+const RecommendationCard = ({ recommendation }: { recommendation: Recommendation }) => (
   <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
     <div className="flex items-start gap-4">
       <Target className="w-6 h-6 text-blue-500 mt-1" />
@@ -811,7 +1478,8 @@ const RecommendationCard = ({ recommendation }: { recommendation: any }) => (
   </div>
 );
 
-const InsightCard = ({ insight }: { insight: any }) => (
+// Insight Card Component
+const InsightCard = ({ insight }: { insight: KeyInsight }) => (
   <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
     <div className="flex items-start gap-4">
       <div className="w-3 h-3 rounded-full mt-2" style={{ backgroundColor: insight.color }}></div>
@@ -832,7 +1500,8 @@ const InsightCard = ({ insight }: { insight: any }) => (
   </div>
 );
 
-const DriverCard = ({ driver }: { driver: any }) => (
+// Driver Card Component
+const DriverCard = ({ driver }: { driver: Driver }) => (
   <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
     <div className="flex items-start justify-between mb-4">
       <div className="flex-1">
@@ -865,7 +1534,8 @@ const DriverCard = ({ driver }: { driver: any }) => (
   </div>
 );
 
-const DemographicSegmentCard = ({ segment, questionText }: { segment: any; questionText: string }) => (
+// Demographic Segment Card Component
+const DemographicSegmentCard = ({ segment, questionText }: { segment: DemographicSegment; questionText: string }) => (
   <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
     <div className="flex items-center justify-between mb-4">
       <h3 className="font-semibold text-gray-800">{segment.segment}</h3>
@@ -892,7 +1562,8 @@ const DemographicSegmentCard = ({ segment, questionText }: { segment: any; quest
   </div>
 );
 
-const ActionPlanCard = ({ action, type }: { action: any; type: 'quick' | 'long' }) => (
+// Action Plan Card Component
+const ActionPlanCard = ({ action, type }: { action: ActionPlanItem; type: 'quick' | 'long' }) => (
   <div className={`bg-white rounded-xl shadow-lg border-l-4 p-6 ${
     type === 'quick' ? 'border-green-500' : 'border-blue-500'
   }`}>
@@ -932,8 +1603,74 @@ const ActionPlanCard = ({ action, type }: { action: any; type: 'quick' | 'long' 
   </div>
 );
 
+// Segment Performance Card Component
+const SegmentPerformanceCard = ({ segment, questionText }: { segment: QuestionLevelSegment; questionText: string }) => (
+  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="font-semibold text-gray-800 text-sm">{segment.segment}</h3>
+      <span className="text-xs text-gray-500">{segment['Segment size']}</span>
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <p className="text-xs text-gray-500 mb-1">NPS</p>
+        <p className={`font-semibold text-sm ${parseInt(segment.NPS) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{segment.NPS}</p>
+      </div>
+      <div>
+        <p className="text-xs text-gray-500 mb-1">CES</p>
+        <p className="font-semibold text-sm text-gray-800">{segment.CES}</p>
+      </div>
+      <div>
+        <p className="text-xs text-gray-500 mb-1">CSAT</p>
+        <p className="font-semibold text-sm text-gray-800">{segment.CSAT}</p>
+      </div>
+      <div>
+        <p className="text-xs text-gray-500 mb-1">Recognition</p>
+        <p className="font-semibold text-sm text-gray-800">{segment['Recognition Score']}</p>
+      </div>
+    </div>
+    <div className="mt-3 pt-3 border-t border-gray-200">
+      <p className="text-xs text-gray-600">{segment.key_differentiator}</p>
+    </div>
+  </div>
+);
+
+// Main App Component
 function App() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
+  const [hasUploadedFile, setHasUploadedFile] = useState(false);
+
+  const handleFileUpload = useCallback((data: SurveyData) => {
+    setSurveyData(data);
+    setHasUploadedFile(true);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setSurveyData(null);
+    setHasUploadedFile(false);
+  }, []);
+
+  // Show only file upload if no data has been uploaded
+  if (!hasUploadedFile || !surveyData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-900">Employee Engagement Dashboard</h1>
+              <p className="text-gray-600 mt-2">Upload your survey data to get started</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto px-6 py-16">
+          <FileUploadComponent onFileUpload={handleFileUpload} onReset={handleReset} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -963,6 +1700,8 @@ function App() {
               { id: 'drivers', name: 'Key Drivers', icon: TrendingUp },
               { id: 'demographics', name: 'Demographics', icon: Users },
               { id: 'segments', name: 'Segment Analysis', icon: Filter },
+              { id: 'sentiment', name: 'Sentiment Analysis', icon: Smile },
+              { id: 'analytics', name: 'Advanced Analytics', icon: Brain },
               { id: 'insights', name: 'AI Insights', icon: Brain },
               { id: 'actions', name: 'Action Plan', icon: Target }
             ].map((tab) => (
@@ -985,11 +1724,18 @@ function App() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* File Upload Section - Only visible when no file is uploaded */}
+        {!hasUploadedFile && (
+          <div className="mb-8">
+            <FileUploadComponent onFileUpload={handleFileUpload} onReset={handleReset} />
+          </div>
+        )}
+
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Key Metrics Grid */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Key Performance Metrics</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Key Performance Metrics</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {surveyData.key_metrics.map((metric, index) => (
                   <MetricCard key={index} metric={metric} />
@@ -998,27 +1744,30 @@ function App() {
             </div>
 
             {/* Priority Issues */}
+            {surveyData.priority_issues && surveyData.priority_issues.length > 0 && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Priority Issues</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Priority Issues</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {surveyData.priority_issues.map((issue, index) => (
                   <PriorityIssueCard key={index} issue={issue} />
                 ))}
               </div>
             </div>
+            )}
 
             {/* Employee Feedback */}
+            {surveyData.customer_quotes && surveyData.customer_quotes.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <MessageSquare className="w-6 h-6 text-purple-500" />
+                <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 text-purple-500" />
                 Employee Feedback
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {surveyData.customer_quotes.map((quote, index) => (
                   <div key={index} className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 italic mb-3">"{quote.text}"</p>
+                      <p className="text-gray-700 italic mb-3 text-sm">"{quote.text}"</p>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-500">— {quote.author}</p>
+                        <p className="text-xs text-gray-500">— {quote.author}</p>
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         quote.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
                         quote.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
@@ -1030,6 +1779,16 @@ function App() {
                   </div>
                 ))}
               </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'sentiment' && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Sentiment Analysis</h2>
+              <SentimentAnalysisComponent data={surveyData.sentiment_analysis} />
             </div>
           </div>
         )}
@@ -1037,6 +1796,7 @@ function App() {
         {activeTab === 'breakdowns' && (
           <div className="space-y-8">
             {/* NPS Breakdown */}
+            {surveyData.nps_breakdown && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <Users className="w-6 h-6 text-blue-500" />
@@ -1077,8 +1837,10 @@ function App() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* ESAT Breakdown */}
+            {surveyData.csat_esat_breakdown && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <Star className="w-6 h-6 text-green-500" />
@@ -1131,8 +1893,10 @@ function App() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* EES Breakdown */}
+            {surveyData.ces_ees_breakdown && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <Zap className="w-6 h-6 text-orange-500" />
@@ -1173,9 +1937,11 @@ function App() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Recognition Breakdown */}
-            {surveyData.custom_metric_breakdown.map((metric, index) => (
+            {surveyData.custom_metric_breakdown && surveyData.custom_metric_breakdown.length > 0 && 
+              surveyData.custom_metric_breakdown.map((metric, index) => (
               <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                   <Award className="w-6 h-6 text-purple-500" />
@@ -1205,7 +1971,8 @@ function App() {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            }
           </div>
         )}
 
@@ -1216,7 +1983,7 @@ function App() {
               <p className="text-gray-600 mb-8">Understanding which factors have the strongest correlation with key metrics helps prioritize improvement efforts.</p>
               
               {/* Group drivers by target metric */}
-              {['NPS', 'CSAT', 'CES', 'RECOGNITION'].map(metric => {
+              {surveyData.drivers && ['NPS', 'CSAT', 'CES', 'RECOGNITION'].map(metric => {
                 const metricDrivers = surveyData.drivers.filter(driver => driver.target_metric === metric);
                 if (metricDrivers.length === 0) return null;
                 
@@ -1251,7 +2018,8 @@ function App() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Demographic Analysis</h2>
               <p className="text-gray-600 mb-8">Performance breakdown across different employee segments to identify patterns and opportunities.</p>
               
-              {Object.entries(surveyData.demographics.segments_by_demographic).map(([questionId, data]: [string, any]) => (
+              {surveyData.demographics && surveyData.demographics.segments_by_demographic && 
+                Object.entries(surveyData.demographics.segments_by_demographic).map(([questionId, data]: [string, any]) => (
                 <div key={questionId} className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-800 mb-4">{data.question_text}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1260,10 +2028,11 @@ function App() {
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
+                ))
+              }
 
             {/* Notable Differences */}
+              {surveyData.demographics && surveyData.demographics.notable_differences && (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <Eye className="w-6 h-6 text-indigo-500" />
@@ -1325,6 +2094,8 @@ function App() {
                   </div>
                 </div>
               </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1333,19 +2104,23 @@ function App() {
           <div className="space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Segment Performance Analysis</h2>
-              <p className="text-gray-600 mb-8">Detailed analysis of performance across different employee segments and question responses.</p>
+              <p className="text-gray-600 mb-8">Comprehensive analysis of performance across different employee segments and question responses.</p>
               
+              {surveyData.segment_performance && surveyData.segment_performance.length > 0 && 
+                surveyData.segment_performance.map((segmentData, segmentIndex) => (
+                  <div key={segmentIndex}>
               {/* Segment Insights */}
+                    {segmentData.segment_insights && segmentData.segment_insights.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Key Segment Insights</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {surveyData.segment_performance[0].segment_insights.map((insight, index) => (
+                          {segmentData.segment_insights.map((insight, index) => (
                     <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
                       <div className="flex items-start gap-4">
                         <div className="text-2xl">{insight.icon}</div>
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <h4 className="font-semibold text-gray-800">{insight.category}</h4>
+                                    <h4 className="font-semibold text-gray-800 text-sm">{insight.category}</h4>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               insight.segment.includes('Top Performer') ? 'bg-green-100 text-green-800' :
                               insight.segment.includes('At Risk') ? 'bg-red-100 text-red-800' :
@@ -1354,57 +2129,49 @@ function App() {
                               {insight.segment.split(':')[0]}
                             </span>
                           </div>
-                          <p className="text-gray-600 text-sm mb-3">{insight.insights}</p>
-                          <p className="text-gray-800 text-sm font-medium">{insight.action}</p>
+                                  <p className="text-gray-600 text-xs mb-3">{insight.insights}</p>
+                                  <p className="text-gray-800 text-xs font-medium">{insight.action}</p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
+                    )}
 
               {/* Question Level Performance */}
+                    {segmentData.question_level && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Question-Level Performance</h3>
-                {Object.entries(surveyData.segment_performance[0].question_level).map(([question, segments]: [string, any]) => (
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Question-Level Performance Analysis</h3>
+                        {Object.entries(segmentData.question_level).map(([question, segments]: [string, any]) => (
                   <div key={question} className="mb-8 bg-white rounded-xl shadow-lg border border-gray-100 p-6">
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">{question}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {Object.entries(segments).map(([segmentKey, segmentData]: [string, any]) => (
-                        <div key={segmentKey} className="bg-gray-50 rounded-lg p-4">
-                          <h5 className="font-semibold text-gray-800 mb-3">{segmentKey}</h5>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">NPS:</span>
-                              <span className={`font-medium ${parseInt(segmentData.NPS) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {segmentData.NPS}
-                              </span>
+                                <SegmentPerformanceCard key={segmentKey} segment={segmentData} questionText={question} />
+                              ))}
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">CES:</span>
-                              <span className="font-medium text-gray-800">{segmentData.CES}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">CSAT:</span>
-                              <span className="font-medium text-gray-800">{segmentData.CSAT}</span>
+                        ))}
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Recognition:</span>
-                              <span className="font-medium text-gray-800">{segmentData['Recognition Score']}</span>
+                    )}
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Size:</span>
-                              <span className="font-medium text-gray-800">{segmentData['Segment size']}</span>
+                ))
+              }
                             </div>
                           </div>
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs text-gray-600">{segmentData.key_differentiator}</p>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Advanced Analytics</h2>
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+                <div className="text-center">
+                  <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">Advanced Analytics Module</h3>
+                  <p className="text-gray-500">Advanced analytics data has not been provided in the uploaded JSON file.</p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -1414,11 +2181,37 @@ function App() {
           <div className="space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">AI-Powered Insights</h2>
+              {surveyData.sections && surveyData.sections.ai_insights && surveyData.sections.ai_insights.length > 0 ? (
               <div className="space-y-6">
-                {surveyData.key_insights.map((insight, index) => (
-                  <InsightCard key={index} insight={insight} />
+                  {surveyData.sections.ai_insights.map((insight, index) => (
+                    <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-3 h-3 rounded-full mt-2" style={{ backgroundColor: insight.impact === 'High' ? '#ef4444' : '#f59e0b' }}></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h3 className="font-semibold text-gray-800">{insight.insight}</h3>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              insight.impact === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {insight.impact}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 text-sm mb-3">{insight.implication}</p>
+                          <p className="text-gray-800 text-sm font-medium">{insight.action}</p>
+                        </div>
+                      </div>
+                    </div>
                 ))}
               </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+                  <div className="text-center">
+                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No AI Insights Available</h3>
+                    <p className="text-gray-500">AI insights data has not been provided in the uploaded JSON file.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1426,6 +2219,7 @@ function App() {
         {activeTab === 'actions' && (
           <div className="space-y-8">
             {/* Recommendations */}
+            {surveyData.recommendations && surveyData.recommendations.length > 0 && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Strategic Recommendations</h2>
               <div className="space-y-6">
@@ -1434,12 +2228,15 @@ function App() {
                 ))}
               </div>
             </div>
+            )}
 
             {/* Action Plan */}
+            {surveyData.action_plan && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Detailed Action Plan</h2>
               
               {/* Quick Wins */}
+                {surveyData.action_plan.quick_wins && surveyData.action_plan.quick_wins.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <Zap className="w-5 h-5 text-green-500" />
@@ -1451,8 +2248,10 @@ function App() {
                   ))}
                 </div>
               </div>
+                )}
 
               {/* Long-term Actions */}
+                {surveyData.action_plan.long_term_actions && surveyData.action_plan.long_term_actions.length > 0 && (
               <div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-blue-500" />
@@ -1464,7 +2263,9 @@ function App() {
                   ))}
                 </div>
               </div>
+                )}
             </div>
+            )}
           </div>
         )}
       </div>
